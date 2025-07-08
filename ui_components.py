@@ -124,7 +124,7 @@ def render_simulation_parameters():
         if cols[i].checkbox(label, value=True, key=f"periodic_{label}"):
             selected_periodic.append(days)
 
-    custom_periodic_enabled = st.checkbox("Enable Custom Periodic (days)", value=False, key="enable_custom_periodic")
+    custom_periodic_enabled = st.checkbox("Custom (days)", value=False, key="enable_custom_periodic")
     if custom_periodic_enabled:
         col1, col2 = st.columns([0.3, 0.7])
         with col1:
@@ -145,7 +145,7 @@ def render_simulation_parameters():
         if cols[i].checkbox(label, value=True, key=f"threshold_{label}"):
             selected_threshold.append(percentage)
 
-    custom_threshold_enabled = st.checkbox("Enable Custom Threshold (%)", value=False, key="enable_custom_threshold")
+    custom_threshold_enabled = st.checkbox("Custom (%)", value=False, key="enable_custom_threshold")
     if custom_threshold_enabled:
         col1, col2 = st.columns([0.3, 0.7])
         with col1:

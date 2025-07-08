@@ -70,4 +70,4 @@ def display_simulation_results(all_results, results_df, results_df_normalized, e
         final_summary_df["Volatility (%)"] = final_summary_df["Volatility (%)"].map(lambda x: f"{x:.2f}%")
         final_summary_df["% Diff from Max"] = final_summary_df["% Diff from Max"].map(lambda x: f"{x:.2f}%")
 
-        st.dataframe(final_summary_df, use_container_width=True, height=300)
+        st.table(final_summary_df)

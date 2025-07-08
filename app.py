@@ -103,11 +103,11 @@ st.sidebar.subheader("Individual Asset Buy and Hold")
 st.sidebar.info("For individual asset Buy and Hold, ensure the asset is also listed in the 'Assets (comma-separated tickers)' input above.")
 selected_individual_assets = []
 for asset in assets:
-    if st.sidebar.checkbox(f"Buy and Hold {asset}", key=f"bh_{asset}"):
+    if st.sidebar.checkbox(f"Buy and Hold {asset}", value=True, key=f"bh_{asset}"):
         selected_individual_assets.append(asset)
 
-# Debug Simulation Checkbox
-debug_simulation = st.sidebar.checkbox("Debug Simulation Logic")
+# Combined Debug Checkbox
+enable_debugging = st.sidebar.checkbox("Enable Debugging")
 
 # Simulation Button
 simulate_button = st.sidebar.button("Simulate")
@@ -157,7 +157,7 @@ def get_data(assets, start, end):
     data.index = pd.to_datetime(data.index)
     data = data.sort_index()
 
-    if debug_simulation:
+    if enable_debugging:
         st.write(f"Debug: Final data columns from get_data: {data.columns.tolist()}")
 
     return data
@@ -189,7 +189,7 @@ if st.checkbox("Debug Data Fetching"):
         st.warning("Debug data could not be fetched or is empty.")
 
 # --- Simulation Logic ---
-def run_simulation(data, initial_amount, ratios, strategy_type, param, debug_simulation=False):
+def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_debugging=False):
 
     ratios_arr = np.array(ratios) / 100.0
 
@@ -232,7 +232,7 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, debug_sim
             else:
                 rebalanced = False
 
-        if debug_simulation:
+        if enable_debugging:
             st.write(f"--- Date: {current_date} ---")
             st.write(f"  Daily Returns: {daily_returns.iloc[i].to_dict()}")
             st.write(f"  Asset Holdings (before rebalance): {asset_holdings.to_dict()}")
@@ -245,7 +245,7 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, debug_sim
             last_rebalance_date = current_date
             # Recalculate current_portfolio_value after rebalancing for accurate recording
             current_portfolio_value = asset_holdings.sum()
-            if debug_simulation:
+            if enable_debugging:
                 st.write(f"  Asset Holdings (after rebalance): {asset_holdings.to_dict()}")
                 st.write(f"  Current Portfolio Value (after rebalance): {current_portfolio_value:.2f}")
 
@@ -254,8 +254,8 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, debug_sim
 
     return portfolio_values_history
 
-def run_individual_buy_and_hold(data, initial_amount, asset_ticker, debug_simulation=False):
-    if debug_simulation:
+def run_individual_buy_and_hold(data, initial_amount, asset_ticker, enable_debugging=False):
+    if enable_debugging:
         st.write(f"Debug BH: Processing asset_ticker: {asset_ticker}")
         st.write(f"Debug BH: Data columns: {data.columns.tolist()}")
 
@@ -287,7 +287,7 @@ if simulate_button:
         st.error("Ratios must sum to 100% to run the simulation.")
     else:
         st.write(f"Attempting to fetch data for assets: {assets}, from {start_date} to {end_date}")
-        data = get_data(assets, start_date, end_date)
+        data = get_data(assets, start_date, end_date, enable_debugging)
 
         if data.empty:
             st.error("Could not fetch data for the selected assets and date range. Please try different tickers or a wider date range.")
@@ -296,19 +296,19 @@ if simulate_button:
 
             # Run Periodic Simulations
             for days in selected_periodic:
-                result = run_simulation(data, amount, ratios, "Periodic", days, debug_simulation)
+                result = run_simulation(data, amount, ratios, "Periodic", days, enable_debugging)
                 if result is not None:
                     all_results[f"Periodic ({days} days)"] = result
 
             # Run Threshold Simulations
             for percentage in selected_threshold:
-                result = run_simulation(data, amount, ratios, "Threshold", percentage, debug_simulation)
+                result = run_simulation(data, amount, ratios, "Threshold", percentage, enable_debugging)
                 if result is not None:
                     all_results[f"Threshold ({percentage*100:.1f}%)"] = result
 
             # Run Individual Asset Buy and Hold Simulations
             for asset_ticker in selected_individual_assets:
-                result = run_individual_buy_and_hold(data, amount, asset_ticker, debug_simulation)
+                result = run_individual_buy_and_hold(data, amount, asset_ticker, enable_debugging)
                 if result is not None:
                     all_results[f"Buy and Hold ({asset_ticker})"] = result
 
@@ -319,7 +319,7 @@ if simulate_button:
                 results_df = pd.DataFrame(all_results)
                 
                 # Add a "Buy and Hold" strategy for comparison
-                buy_and_hold_values = run_simulation(data, amount, ratios, 'Periodic', float('inf'), debug_simulation)
+                buy_and_hold_values = run_simulation(data, amount, ratios, 'Periodic', float('inf'), enable_debugging)
                 results_df['Buy and Hold (Portfolio)'] = buy_and_hold_values
 
                 # Normalize results to show percentage growth
@@ -349,5 +349,5 @@ if simulate_button:
                 st.plotly_chart(fig, use_container_width=False, width=plot_width, height=plot_height)
 
                 st.subheader("Final Portfolio Values")
-                st.write(results_df.iloc[-1].sort_values(ascending=False).to_frame(name="Final Value"))
+                st.dataframe(results_df.iloc[-1].sort_values(ascending=False).to_frame(name="Final Value"), use_container_width=True, height=300)
 

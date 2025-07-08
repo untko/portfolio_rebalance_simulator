@@ -7,52 +7,63 @@ import plotly.express as px
 
 st.title("Portfolio Rebalancing Simulator")
 
-# --- Sidebar ---
-st.sidebar.header("Simulation Parameters")
+# --- Simulation Parameters (Moved from Sidebar) ---
+st.header("Simulation Parameters")
 
 # Amount
-amount = st.sidebar.number_input("Amount", min_value=1, value=1000)
+amount = st.number_input("Amount", min_value=1, value=1000)
 
 # Assets
-assets_str = st.sidebar.text_input("Assets (comma-separated tickers)", "BTC-USD,GLD")
+assets_str = st.text_input("Assets (comma-separated tickers)", "BTC-USD,GLD")
 assets = [s.strip().upper() for s in assets_str.split(',')]
 
 # Ratios
-st.sidebar.subheader("Ratio")
+st.subheader("Ratio")
 ratios = []
 
 if len(assets) == 2:
-    ratio_asset1 = st.sidebar.slider(f"Ratio between {assets[0]} and {assets[1]}", 0, 100, 50, 1)
+    ratio_asset1 = st.slider(f"Ratio between {assets[0]} and {assets[1]}", 0, 100, 50, 1)
     ratios = [ratio_asset1, 100 - ratio_asset1]
-    st.sidebar.subheader("Manual Input (%)")
-    cols = st.sidebar.columns(2)
+    st.subheader("Current Allocation (%)")
+    cols = st.columns(2)
     with cols[0]:
         st.metric(label=assets[0], value=f"{ratios[0]}%")
     with cols[1]:
         st.metric(label=assets[1], value=f"{ratios[1]}%")
 elif len(assets) > 2:
-    st.sidebar.subheader("Manual Input (%)")
-    ratios = []
-    cols = st.sidebar.columns(len(assets))
-    for i, asset in enumerate(assets):
-        with cols[i]:
-            ratios.append(st.number_input(f"{asset}", min_value=0, max_value=100, value=int(100/len(assets)), key=f"ratio_{asset}"))
-    if sum(ratios) != 100:
-        st.sidebar.warning("Ratios must sum to 100.")
+    st.subheader("Enter Ratios (comma-separated percentages)")
+    ratios_str = st.text_input("e.g., 40,30,30", value=",".join([str(int(100/len(assets))) for _ in assets]))
+    try:
+        ratios = [float(r.strip()) for r in ratios_str.split(',')]
+        if len(ratios) != len(assets):
+            st.warning(f"Please enter {len(assets)} ratios, one for each asset.")
+            ratios = [] # Clear ratios to prevent simulation with incorrect count
+        elif sum(ratios) != 100:
+            st.warning("Ratios must sum to 100.")
+        else:
+            st.subheader("Current Allocation (%)")
+            cols = st.columns(len(assets))
+            for i, asset in enumerate(assets):
+                with cols[i]:
+                    st.metric(label=asset, value=f"{ratios[i]}%")
+    except ValueError:
+        st.warning("Please enter valid numbers for ratios.")
+        ratios = [] # Clear ratios to prevent simulation with invalid input
 elif len(assets) == 1:
     ratios = [100]
-    st.sidebar.write(f"100% {assets[0]}")
+    st.write(f"100% {assets[0]}")
 # Range
-st.sidebar.subheader("Range")
+st.subheader("Range")
 
 predefined_ranges = {
     "5 Years": 5,
+    "3 Years": 3,
     "1 Year": 1,
     "6 Months": 0.5,
     "1 Month": 1/12,
 }
 
-range_option = st.sidebar.selectbox("Select Range", list(predefined_ranges.keys()) + ["Custom"])
+range_option = st.selectbox("Select Range", list(predefined_ranges.keys()) + ["Custom"])
 
 from datetime import datetime, timedelta
 
@@ -64,60 +75,67 @@ if range_option != "Custom":
         start_date = end_date - timedelta(days=int(365 * years_to_subtract))
     else:
         start_date = end_date - timedelta(days=int(365 * years_to_subtract))
-    st.sidebar.write(f"Earliest available data: {start_date.strftime('%d-%m-%y')}")
+    st.write(f"Earliest available data: {start_date.strftime('%d-%m-%y')}")
+else:
+    st.subheader("Custom Date Range")
+    start_date = st.date_input("Start Date", value=end_date - timedelta(days=365))
+    end_date = st.date_input("End Date", value=end_date)
 # Rebalancing Strategy
-st.sidebar.subheader("Rebalancing Strategy")
+st.subheader("Rebalancing Strategy")
 
 # Periodic Rebalancing
-st.sidebar.write("Periodic")
+st.write("Periodic")
 periodic_options = {
     "daily": 1, "weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365
 }
 selected_periodic = []
-cols = st.sidebar.columns(len(periodic_options))
+cols = st.columns(len(periodic_options))
 for i, (label, days) in enumerate(periodic_options.items()):
-    if cols[i].checkbox(label, key=f"periodic_{label}"):
+    if cols[i].checkbox(label, value=True, key=f"periodic_{label}"):
         selected_periodic.append(days)
 
-custom_periodic = st.sidebar.number_input("Custom (in days)", min_value=1, step=1)
-if custom_periodic:
-    selected_periodic.append(custom_periodic)
+custom_periodic_enabled = st.checkbox("Enable Custom Periodic (days)", value=False)
+if custom_periodic_enabled:
+    custom_periodic = st.number_input("Custom (in days)", min_value=1, step=1)
+    if custom_periodic:
+        selected_periodic.append(custom_periodic)
 
 # Threshold Rebalancing
-st.sidebar.write("Threshold")
+st.write("Threshold")
 threshold_options = {
     "0.1%": 0.001, "1%": 0.01, "5%": 0.05, "10%": 0.10, "50%": 0.50
 }
 selected_threshold = []
-cols = st.sidebar.columns(len(threshold_options))
+cols = st.columns(len(threshold_options))
 for i, (label, percentage) in enumerate(threshold_options.items()):
-    if cols[i].checkbox(label, key=f"threshold_{label}"):
+    if cols[i].checkbox(label, value=True, key=f"threshold_{label}"):
         selected_threshold.append(percentage)
 
-custom_threshold = st.sidebar.number_input("Custom (in %)", min_value=0.1, step=0.1)
-if custom_threshold:
-    selected_threshold.append(custom_threshold / 100.0)
+custom_threshold_enabled = st.checkbox("Enable Custom Threshold (%)", value=False)
+if custom_threshold_enabled:
+    custom_threshold = st.number_input("Custom (in %)", min_value=0.1, step=0.1)
+    if custom_threshold:
+        selected_threshold.append(custom_threshold / 100.0)
 
 # Individual Asset Buy and Hold
-st.sidebar.subheader("Individual Asset Buy and Hold")
-st.sidebar.info("For individual asset Buy and Hold, ensure the asset is also listed in the 'Assets (comma-separated tickers)' input above.")
+st.subheader("Individual Asset Buy and Hold")
+st.info("For individual asset Buy and Hold, ensure the asset is also listed in the 'Assets (comma-separated tickers)' input above.")
 selected_individual_assets = []
 for asset in assets:
-    if st.sidebar.checkbox(f"Buy and Hold {asset}", value=True, key=f"bh_{asset}"):
+    if st.checkbox(f"Buy and Hold {asset}", value=True, key=f"bh_{asset}"):
         selected_individual_assets.append(asset)
 
 # Combined Debug Checkbox
-enable_debugging = st.sidebar.checkbox("Enable Debugging")
+enable_debugging = st.checkbox("Enable Debugging")
 
 # Simulation Button
-simulate_button = st.sidebar.button("Simulate")
-automatic_checkbox = st.sidebar.checkbox("automatic")
+simulate_button = st.button("Simulate")
 
 # --- Data Fetching ---
 import time
 
 @st.cache_data
-def get_data(assets, start, end):
+def get_data(assets, start, end, enable_debugging=False):
     data = pd.DataFrame()
     retries = 3
     for i in range(retries):
@@ -162,32 +180,6 @@ def get_data(assets, start, end):
 
     return data
 
-
-if st.checkbox("Debug Data Fetching"):
-    st.subheader("Data Debugging")
-    debug_assets = ["BTC-USD", "GLD"] # Using sample assets for debugging
-    debug_start_date = datetime(2023, 1, 1).date()
-    debug_end_date = datetime(2024, 1, 1).date()
-    
-    st.write(f"Fetching data for: {debug_assets} from {debug_start_date} to {debug_end_date}")
-    debug_data = get_data(debug_assets, debug_start_date, debug_end_date)
-    
-    if not debug_data.empty:
-        st.write("Data Head:")
-        st.dataframe(debug_data.head())
-        
-        st.write("Data Info:")
-        # Streamlit doesn't directly display df.info() well, so convert to string
-        import io
-        buffer = io.StringIO()
-        debug_data.info(buf=buffer)
-        st.text(buffer.getvalue())
-        
-        st.write("Data Columns:")
-        st.write(debug_data.columns.tolist())
-    else:
-        st.warning("Debug data could not be fetched or is empty.")
-
 # --- Simulation Logic ---
 def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_debugging=False):
 
@@ -206,7 +198,7 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_de
     daily_returns = data.pct_change().fillna(0) # Fill NaN (first row) with 0
 
     # Initialize asset holdings (monetary value) based on initial amount and ratios
-    asset_holdings = initial_amount * ratios_arr
+    asset_holdings = pd.Series(initial_amount * ratios_arr, index=data.columns)
 
     last_rebalance_date = data.index[0]
 
@@ -241,7 +233,7 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_de
 
         if rebalanced:
             # Rebalance asset holdings to target allocations based on current_portfolio_value
-            asset_holdings = current_portfolio_value * ratios_arr
+            asset_holdings = pd.Series(current_portfolio_value * ratios_arr, index=data.columns)
             last_rebalance_date = current_date
             # Recalculate current_portfolio_value after rebalancing for accurate recording
             current_portfolio_value = asset_holdings.sum()
@@ -264,13 +256,23 @@ def run_individual_buy_and_hold(data, initial_amount, asset_ticker, enable_debug
         return None
 
     asset_prices = data[asset_ticker]
+    
+    if enable_debugging:
+        st.write(f"Debug BH: {asset_ticker} asset_prices head:\n{asset_prices.head()}")
+        st.write(f"Debug BH: {asset_ticker} asset_prices tail:\n{asset_prices.tail()}")
+
     if asset_prices.empty:
+        if enable_debugging:
+            st.write(f"Debug BH: {asset_ticker} asset_prices is empty.")
         return None
 
     # Calculate initial shares based on the first day's price
     initial_price = asset_prices.iloc[0]
-    if initial_price == 0:
-        st.warning(f"Initial price for {asset_ticker} is zero. Cannot calculate Buy and Hold.")
+    if enable_debugging:
+        st.write(f"Debug BH: {asset_ticker} initial_price: {initial_price}")
+
+    if initial_price == 0 or np.isnan(initial_price):
+        st.warning(f"Initial price for {asset_ticker} is zero or NaN. Cannot calculate Buy and Hold.")
         return None
 
     initial_shares = initial_amount / initial_price
@@ -286,7 +288,6 @@ if simulate_button:
     elif sum(ratios) != 100 and len(assets) > 1:
         st.error("Ratios must sum to 100% to run the simulation.")
     else:
-        st.write(f"Attempting to fetch data for assets: {assets}, from {start_date} to {end_date}")
         data = get_data(assets, start_date, end_date, enable_debugging)
 
         if data.empty:
@@ -331,23 +332,56 @@ if simulate_button:
 
                 st.subheader("Simulation Results")
 
-                # Plot Size Adjustment
-                st.sidebar.subheader("Plot Settings")
-                plot_width = st.sidebar.number_input("Plot Width (pixels)", min_value=300, value=800, step=50)
-                plot_height = st.sidebar.number_input("Plot Height (pixels)", min_value=300, value=500, step=50)
-
                 fig = px.line(results_df_normalized, 
                               title="Portfolio Growth Over Time",
                               labels={"index": "Date", "value": "Portfolio Value (%)", "variable": "Strategy"})
                 
+                # Update legend names to include final percentage return
+                for trace in fig.data:
+                    strategy_name = trace.name
+                    final_value = results_df_normalized[strategy_name].iloc[-1]
+                    trace.name = f"{strategy_name} ({final_value:.2f}%)"
+
+                    # Set distinct line style for individual Buy and Hold assets
+                    if strategy_name.startswith("Buy and Hold (") and strategy_name.endswith(")"):
+                        trace.line.dash = 'dash'
+
                 fig.update_layout(
                     hovermode='x unified',
                     legend_title_text='Rebalancing Strategy',
                     yaxis_title="Portfolio Value (% of Initial)",
                     xaxis_title="Date"
                 )
-                st.plotly_chart(fig, use_container_width=False, width=plot_width, height=plot_height)
+                st.plotly_chart(fig, use_container_width=True)
 
                 st.subheader("Final Portfolio Values")
-                st.dataframe(results_df.iloc[-1].sort_values(ascending=False).to_frame(name="Final Value"), use_container_width=True, height=300)
+
+                final_values = results_df.iloc[-1]
+                percentage_change = results_df_normalized.iloc[-1] - 100
+
+                # Calculate Volatility (Annualized Standard Deviation of Daily Returns)
+                daily_returns_normalized = results_df_normalized.pct_change().fillna(0)
+                volatility = daily_returns_normalized.std() * np.sqrt(252) * 100 # Annualized volatility in %
+
+                # Calculate % Difference from Max Value
+                max_final_value = final_values.max()
+                percentage_diff_from_max = ((final_values - max_final_value) / max_final_value) * 100
+
+                final_summary_df = pd.DataFrame({
+                    "Final Value": final_values,
+                    "% Change": percentage_change,
+                    "Volatility (%)": volatility,
+                    "% Diff from Max": percentage_diff_from_max
+                })
+
+                # Sort by Final Value (highest to lowest) before formatting
+                final_summary_df = final_summary_df.sort_values(by="Final Value", ascending=False)
+
+                # Apply formatting after sorting
+                final_summary_df["Final Value"] = final_summary_df["Final Value"].map(lambda x: f"{x:.2f}")
+                final_summary_df["% Change"] = final_summary_df["% Change"].map(lambda x: f"{x:.2f}%")
+                final_summary_df["Volatility (%)"] = final_summary_df["Volatility (%)"].map(lambda x: f"{x:.2f}%")
+                final_summary_df["% Diff from Max"] = final_summary_df["% Diff from Max"].map(lambda x: f"{x:.2f}%")
+
+                st.dataframe(final_summary_df, use_container_width=True, height=300)
 

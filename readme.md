@@ -6,21 +6,26 @@ This application simulates and visualizes the performance of different portfolio
 
 - **Define Your Portfolio:**
   - Set the initial investment amount.
-  - Add multiple assets to your portfolio (e.g., BTC, Gold).
-  - Specify the desired asset allocation ratio using a slider or manual input.
+  - Add multiple assets to the portfolio (e.g., BTC-USD, GLD, ETH-USD).
+  - Specify the desired asset allocation ratio using a slider or text input.
 
 - **Select Simulation Range:**
-  - Use predefined time ranges (e.g., 5 years, 1 year, 1 month).
+  - Use predefined time ranges (e.g., 5 years, 3 years, 1 year, 6 months, 1 month).
   - Define a custom date range for the simulation.
 
 - **Choose Rebalancing Strategies:**
-  - **Periodic Rebalancing:** Set a fixed time interval for rebalancing (daily, weekly, monthly, quarterly, yearly, or custom days).
-  - **Threshold Rebalancing:** Rebalance the portfolio whenever an asset's weight deviates by a certain percentage (e.g., 0.1%, 1%, 5%, 10%, 50%, or custom %).
+  - **Periodic Rebalancing:** Set a fixed time interval for rebalancing (daily, weekly, monthly, quarterly, yearly, or custom days). All periodic options are on by default.
+  - **Threshold Rebalancing:** Rebalance the portfolio whenever an asset's weight deviates by a certain percentage (e.g., 0.1%, 1%, 5%, 10%, 50%, or custom %). All threshold options are on by default.
+
+- **Individual Asset Buy and Hold:** Simulate buy and hold for individual assets alongside portfolio strategies.
 
 - **Visualize Results:**
   - Run the simulation to see how your portfolio would have performed.
   - Compare the performance of different rebalancing strategies on an interactive chart.
-  - An "automatic" option can select and display the best-performing strategies.
+  - Graph lines for individual asset Buy and Hold strategies are styled differently for better visibility.
+  - Final portfolio values table includes % Change, Volatility (%), and % Difference from Max.
+
+- **Data Caching:** Historical data fetched from `yfinance` is cached locally for faster subsequent simulations.
 
 ## Tech Stack
 

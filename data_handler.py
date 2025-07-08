@@ -9,7 +9,9 @@ CACHE_DIR = "./data_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 def _get_cache_filepath(asset):
-    return os.path.join(CACHE_DIR, f"{asset}.csv")
+    # Sanitize asset name for filename (replace problematic characters)
+    safe_asset_name = asset.replace('^', '_').replace('-', '_') # Example: ^GSPC -> _GSPC, BTC-USD -> BTC_USD
+    return os.path.join(CACHE_DIR, f"{safe_asset_name}.csv")
 
 def _load_from_cache(asset, enable_debugging):
     filepath = _get_cache_filepath(asset)
@@ -48,12 +50,23 @@ def get_data(assets, start, end, enable_debugging=False):
                     if not temp_data.empty:
                         # Standardize data format from yfinance
                         if isinstance(temp_data.columns, pd.MultiIndex):
-                            asset_data = temp_data['Close'][asset].to_frame(name=asset)
+                            # yfinance returns (Attribute, Ticker) for MultiIndex
+                            # We need to find the 'Close' price for the current asset
+                            if ('Close', asset) in temp_data.columns:
+                                asset_data = temp_data['Close'][asset].to_frame(name=asset)
+                            elif ('Adj Close', asset) in temp_data.columns:
+                                asset_data = temp_data['Adj Close'][asset].to_frame(name=asset)
+                            else:
+                                # Fallback if 'Close' or 'Adj Close' not found in MultiIndex
+                                st.warning(f"Could not find 'Close' or 'Adj Close' for {asset} in MultiIndex. Using first column.")
+                                asset_data = temp_data.iloc[:, 0].to_frame(name=asset)
                         elif 'Close' in temp_data.columns:
                             asset_data = temp_data[['Close']].rename(columns={'Close': asset})
                         elif 'Adj Close' in temp_data.columns:
                             asset_data = temp_data[['Adj Close']].rename(columns={'Adj Close': asset})
                         else:
+                            # Fallback if neither 'Close' nor 'Adj Close' is found in single index
+                            st.warning(f"Could not find 'Close' or 'Adj Close' for {asset}. Using first column.")
                             asset_data = temp_data.iloc[:, :1]
                             asset_data.columns = [asset]
 
@@ -90,14 +103,10 @@ def get_data(assets, start, end, enable_debugging=False):
         st.write(f"Debug: Final data columns from get_data: {data.columns.tolist()}")
 
     # Final check to ensure all requested assets are in the DataFrame
-    missing_assets = [asset for asset in assets if asset not in data.columns]
-    if missing_assets:
-        st.warning(f"Warning: Data for the following assets could not be retrieved: {', '.join(missing_assets)}. These assets will be excluded from the simulation.")
-        # Filter out missing assets from the original assets list for subsequent processing
-        assets = [asset for asset in assets if asset not in missing_assets]
-        data = data[assets] # Filter data to only include available assets
-        if data.empty:
-            st.error("No valid data available for simulation after filtering missing assets.")
-            return pd.DataFrame()
+    actual_assets = data.columns.tolist()
+    if len(actual_assets) < len(assets):
+        missing_assets = [asset for asset in assets if asset not in actual_assets]
+        st.error(f"Error: Data for the following assets could not be retrieved: {', '.join(missing_assets)}. Please check the ticker symbols.")
+        return pd.DataFrame(), [] # Return empty DataFrame and empty assets list to stop simulation
 
-    return data
+    return data, actual_assets

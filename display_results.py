@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 
-def display_simulation_results(all_results, results_df, results_df_normalized):
+def display_simulation_results(all_results, results_df, results_df_normalized, enable_debugging=False):
     if not all_results:
         st.write("Please select at least one rebalancing strategy.")
     else:
@@ -30,6 +30,16 @@ def display_simulation_results(all_results, results_df, results_df_normalized):
             xaxis_title="Date"
         )
         st.plotly_chart(fig, use_container_width=True)
+
+        # Sort columns by their final value (highest to lowest)
+        final_values_sorted_columns = results_df.iloc[-1].sort_values(ascending=False).index
+        results_df_normalized = results_df_normalized[final_values_sorted_columns]
+
+        if enable_debugging:
+            st.write("Debug: results_df tail:")
+            st.dataframe(results_df.tail())
+            st.write("Debug: results_df_normalized tail:")
+            st.dataframe(results_df_normalized.tail())
 
         st.subheader("Final Portfolio Values")
 

@@ -1,16 +1,50 @@
 import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
+import yfinance as yf
+import numpy as np
 
 def render_simulation_parameters():
     st.header("Simulation Parameters")
 
     # Amount
-    amount = st.number_input("Amount", min_value=1, value=1000)
+    col1, col2 = st.columns([0.3, 0.7])
+    with col1:
+        st.write("Amount ($)")
+    with col2:
+        amount = st.number_input("", min_value=1, value=1000, label_visibility="collapsed")
 
     # Assets
     assets_str = st.text_input("Assets (comma-separated tickers)", "BTC-USD,GLD")
+    st.info("You can use any tickers available on Yahoo Finance (e.g., AAPL, GOOG, GLD, ETH-USD, ^GSPC). Find them at https://finance.yahoo.com/")
     assets = [s.strip().upper() for s in assets_str.split(',')]
+
+    # Display current prices of selected assets
+    if assets:
+        st.subheader("Current Asset Prices")
+        cols = st.columns(len(assets))
+        for i, asset in enumerate(assets):
+            with cols[i]:
+                current_price = "N/A"
+                asset_long_name = ""
+                try:
+                    ticker = yf.Ticker(asset)
+                    hist = ticker.history(period="1d")
+                    if not hist.empty:
+                        current_price = f"{hist['Close'].iloc[-1]:.2f}$"
+                    
+                    # Fetch long name
+                    info = ticker.info
+                    if 'longName' in info:
+                        asset_long_name = info['longName']
+                    elif 'shortName' in info:
+                        asset_long_name = info['shortName']
+
+                except Exception:
+                    pass # Ignore errors if price or info cannot be fetched
+                
+                display_name = f"{asset} - {asset_long_name}" if asset_long_name else asset
+                st.markdown(f"<h4 style='text-align: center; margin-bottom: 0px;'>{display_name}</h4><p style='text-align: center; font-size: 1.2em; margin-top: 0px;'>{current_price}</p>", unsafe_allow_html=True)
 
     # Ratios
     st.subheader("Ratio")
@@ -19,7 +53,7 @@ def render_simulation_parameters():
     if len(assets) == 2:
         ratio_asset1 = st.slider(f"Ratio between {assets[0]} and {assets[1]}", 0, 100, 50, 1)
         ratios = [ratio_asset1, 100 - ratio_asset1]
-        st.subheader("Current Allocation (%)")
+        st.write("Current Allocation (%)")
         cols = st.columns(2)
         with cols[0]:
             st.metric(label=assets[0], value=f"{ratios[0]}%")
@@ -56,10 +90,11 @@ def render_simulation_parameters():
         "3 Years": 3,
         "1 Year": 1,
         "6 Months": 0.5,
+        "3 Months": 3/12,
         "1 Month": 1/12,
     }
 
-    range_option = st.selectbox("Select Range", list(predefined_ranges.keys()) + ["Custom"])
+    range_option = st.selectbox("Select Range (predefined or custom)", list(predefined_ranges.keys()) + ["Custom"])
 
     end_date = datetime.now().date()
 
@@ -81,7 +116,7 @@ def render_simulation_parameters():
     # Periodic Rebalancing
     st.write("Periodic")
     periodic_options = {
-        "daily": 1, "weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365
+        "daily": 1, "weekly": 7, "monthly": 30, "quarterly": 90, "6monthly": 180, "yearly": 365
     }
     selected_periodic = []
     cols = st.columns(len(periodic_options))
@@ -89,16 +124,20 @@ def render_simulation_parameters():
         if cols[i].checkbox(label, value=True, key=f"periodic_{label}"):
             selected_periodic.append(days)
 
-    custom_periodic_enabled = st.checkbox("Enable Custom Periodic (days)", value=False)
+    custom_periodic_enabled = st.checkbox("Enable Custom Periodic (days)", value=False, key="enable_custom_periodic")
     if custom_periodic_enabled:
-        custom_periodic = st.number_input("Custom (in days)", min_value=1, step=1)
+        col1, col2 = st.columns([0.3, 0.7])
+        with col1:
+            st.write("Custom (in days)")
+        with col2:
+            custom_periodic = st.number_input("", min_value=1, value=1, label_visibility="collapsed", key="custom_periodic_input")
         if custom_periodic:
             selected_periodic.append(custom_periodic)
 
     # Threshold Rebalancing
     st.write("Threshold")
     threshold_options = {
-        "0.1%": 0.001, "1%": 0.01, "5%": 0.05, "10%": 0.10, "50%": 0.50
+        "1%": 0.01, "5%": 0.05, "10%": 0.10, "50%": 0.50
     }
     selected_threshold = []
     cols = st.columns(len(threshold_options))
@@ -106,24 +145,28 @@ def render_simulation_parameters():
         if cols[i].checkbox(label, value=True, key=f"threshold_{label}"):
             selected_threshold.append(percentage)
 
-    custom_threshold_enabled = st.checkbox("Enable Custom Threshold (%)", value=False)
+    custom_threshold_enabled = st.checkbox("Enable Custom Threshold (%)", value=False, key="enable_custom_threshold")
     if custom_threshold_enabled:
-        custom_threshold = st.number_input("Custom (in %)", min_value=0.1, step=0.1)
+        col1, col2 = st.columns([0.3, 0.7])
+        with col1:
+            st.write("Custom (in %)")
+        with col2:
+            custom_threshold = st.number_input("", min_value=0.1, value=0.1, label_visibility="collapsed", key="custom_threshold_input")
         if custom_threshold:
             selected_threshold.append(custom_threshold / 100.0)
 
     # Individual Asset Buy and Hold
     st.subheader("Individual Asset Buy and Hold")
-    st.info("For individual asset Buy and Hold, ensure the asset is also listed in the 'Assets (comma-separated tickers)' input above.")
+    
     selected_individual_assets = []
     for asset in assets:
         if st.checkbox(f"Buy and Hold {asset}", value=True, key=f"bh_{asset}"):
             selected_individual_assets.append(asset)
 
     # Combined Debug Checkbox
-    enable_debugging = st.checkbox("Enable Debugging")
+    enable_debugging = st.checkbox("Enable Debugging", key="enable_debugging_checkbox")
 
     # Simulation Button
-    simulate_button = st.button("Simulate")
+    simulate_button = st.button("Simulate", key="simulate_button")
 
     return amount, assets, ratios, start_date, end_date, selected_periodic, selected_threshold, selected_individual_assets, enable_debugging, simulate_button

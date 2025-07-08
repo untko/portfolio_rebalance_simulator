@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_debugging=False):
+def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_debugging=False, debug_interval=100):
 
     ratios_arr = np.array(ratios) / 100.0
 
@@ -45,7 +45,7 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_de
             else:
                 rebalanced = False
 
-        if enable_debugging:
+        if enable_debugging and (i % debug_interval == 0 or rebalanced):
             st.write(f"--- Date: {current_date} ---")
             st.write(f"  Daily Returns: {daily_returns.iloc[i].to_dict()}")
             st.write(f"  Asset Holdings (before rebalance): {asset_holdings.to_dict()}")
@@ -100,4 +100,8 @@ def run_individual_buy_and_hold(data, initial_amount, asset_ticker, enable_debug
 
     # Calculate portfolio value over time
     portfolio_values = asset_prices * initial_shares
+    
+    # Fill any NaN values with the last valid observation
+    portfolio_values = portfolio_values.ffill()
+
     return portfolio_values

@@ -10,7 +10,7 @@ from display_results import display_simulation_results
 st.title("Portfolio Rebalancing Simulator")
 
 # Render UI components and get parameters
-amount, assets, ratios, start_date, end_date, selected_periodic, selected_threshold, selected_individual_assets, enable_debugging, simulate_button = render_simulation_parameters()
+amount, assets, ratios, start_date, end_date, selected_periodic, selected_threshold, selected_individual_assets, enable_debugging, simulate_button, fee = render_simulation_parameters()
 
 # --- Main App Logic ---
 if simulate_button:
@@ -26,18 +26,26 @@ if simulate_button:
             pass
         else:
             all_results = {}
+            rebalance_counts = {}
+            total_fees = {}
 
             # Run Periodic Simulations
             for days in selected_periodic:
-                result = run_simulation(data, amount, ratios, "Periodic", days, enable_debugging, debug_interval=100)
+                result, rebalance_count, fees = run_simulation(data, amount, ratios, "Periodic", days, fee, enable_debugging, debug_interval=100)
                 if result is not None:
-                    all_results[f"Periodic ({days} days)"] = result
+                    strategy_name = f"Periodic ({days} days)"
+                    all_results[strategy_name] = result
+                    rebalance_counts[strategy_name] = rebalance_count
+                    total_fees[strategy_name] = fees
 
             # Run Threshold Simulations
             for percentage in selected_threshold:
-                result = run_simulation(data, amount, ratios, "Threshold", percentage, enable_debugging, debug_interval=100)
+                result, rebalance_count, fees = run_simulation(data, amount, ratios, "Threshold", percentage, fee, enable_debugging, debug_interval=100)
                 if result is not None:
-                    all_results[f"Threshold ({percentage*100:.1f}%)"] = result
+                    strategy_name = f"Threshold ({percentage*100:.1f}%)"
+                    all_results[strategy_name] = result
+                    rebalance_counts[strategy_name] = rebalance_count
+                    total_fees[strategy_name] = fees
 
             # Run Individual Asset Buy and Hold Simulations
             for asset_ticker in selected_individual_assets:
@@ -45,11 +53,17 @@ if simulate_button:
                 if asset_ticker in assets:
                     result = run_individual_buy_and_hold(data, amount, asset_ticker, enable_debugging)
                     if result is not None:
-                        all_results[f"Buy and Hold ({asset_ticker})"] = result
+                        strategy_name = f"Buy and Hold ({asset_ticker})"
+                        all_results[strategy_name] = result
+                        rebalance_counts[strategy_name] = 0
+                        total_fees[strategy_name] = 0
 
             # Add a "Buy and Hold" strategy for comparison
-            buy_and_hold_values = run_simulation(data, amount, ratios, 'Periodic', float('inf'), enable_debugging, debug_interval=100)
-            all_results['Buy and Hold (Portfolio)'] = buy_and_hold_values
+            buy_and_hold_values, rebalance_count, fees = run_simulation(data, amount, ratios, 'Periodic', float('inf'), fee, enable_debugging, debug_interval=100)
+            strategy_name = 'Buy and Hold (Portfolio)'
+            all_results[strategy_name] = buy_and_hold_values
+            rebalance_counts[strategy_name] = rebalance_count
+            total_fees[strategy_name] = fees
 
             # Combine results into a single DataFrame
             results_df = pd.DataFrame(all_results)
@@ -61,4 +75,4 @@ if simulate_button:
             final_values_sorted_columns = results_df.iloc[-1].sort_values(ascending=False).index
             results_df_normalized = results_df_normalized[final_values_sorted_columns]
 
-            display_simulation_results(all_results, results_df, results_df_normalized, enable_debugging)
+            display_simulation_results(all_results, results_df, results_df_normalized, rebalance_counts, total_fees, enable_debugging)

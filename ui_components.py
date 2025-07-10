@@ -7,12 +7,17 @@ import numpy as np
 def render_simulation_parameters():
     st.header("Simulation Parameters")
 
-    # Amount
-    col1, col2 = st.columns([0.3, 0.7])
+    # Amount and Fee
+    col1, col2, col3, col4 = st.columns([0.15, 0.35, 0.15, 0.35])
     with col1:
         st.write("Amount ($)")
     with col2:
-        amount = st.number_input("", min_value=1, value=1000, label_visibility="collapsed")
+        amount = st.number_input("", min_value=1, value=1000, label_visibility="collapsed", key="amount_input")
+    with col3:
+        st.write("Fee (%)")
+    with col4:
+        fee = st.number_input("", min_value=0.0, value=0.1, step=0.01, format="%.2f", label_visibility="collapsed", key="fee_input")
+
 
     # Assets
     assets_str = st.text_input("Assets (comma-separated tickers)", "BTC-USD,GLD")
@@ -169,4 +174,4 @@ def render_simulation_parameters():
     # Simulation Button
     simulate_button = st.button("Simulate", key="simulate_button")
 
-    return amount, assets, ratios, start_date, end_date, selected_periodic, selected_threshold, selected_individual_assets, enable_debugging, simulate_button
+    return amount, assets, ratios, start_date, end_date, selected_periodic, selected_threshold, selected_individual_assets, enable_debugging, simulate_button, fee

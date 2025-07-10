@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 
-def display_simulation_results(all_results, results_df, results_df_normalized, enable_debugging=False):
+def display_simulation_results(all_results, results_df, results_df_normalized, rebalance_counts, total_fees, enable_debugging=False):
     if not all_results:
         st.write("Please select at least one rebalancing strategy.")
     else:
@@ -58,6 +58,8 @@ def display_simulation_results(all_results, results_df, results_df_normalized, e
             "Final Value": final_values,
             "% Change": percentage_change,
             "Volatility (%)": volatility,
+            "Rebalance Count": pd.Series(rebalance_counts),
+            "Total Fees ($)": pd.Series(total_fees),
             "% Diff from Max": percentage_diff_from_max
         })
 
@@ -68,6 +70,7 @@ def display_simulation_results(all_results, results_df, results_df_normalized, e
         final_summary_df["Final Value"] = final_summary_df["Final Value"].map(lambda x: f"{x:.2f}")
         final_summary_df["% Change"] = final_summary_df["% Change"].map(lambda x: f"{x:.2f}%")
         final_summary_df["Volatility (%)"] = final_summary_df["Volatility (%)"].map(lambda x: f"{x:.2f}%")
+        final_summary_df["Total Fees ($)"] = final_summary_df["Total Fees ($)"].map(lambda x: f"{x:.2f}")
         final_summary_df["% Diff from Max"] = final_summary_df["% Diff from Max"].map(lambda x: f"{x:.2f}%")
 
         st.table(final_summary_df)

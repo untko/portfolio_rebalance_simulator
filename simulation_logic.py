@@ -2,15 +2,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_debugging=False, debug_interval=100):
+def run_simulation(data, initial_amount, ratios, strategy_type, param, fee_percentage=0.0, enable_debugging=False, debug_interval=100):
 
     ratios_arr = np.array(ratios) / 100.0
+    rebalance_count = 0
+    total_fees = 0.0
 
     # Handle single asset case (no rebalancing)
     if len(data.columns) == 1:
         initial_shares = initial_amount / data.iloc[0, 0]
         portfolio_values = data.iloc[:, 0] * initial_shares
-        return portfolio_values
+        return portfolio_values, 0, 0.0
 
     portfolio_values_history = pd.Series(index=data.index)
     portfolio_values_history.iloc[0] = initial_amount
@@ -53,19 +55,34 @@ def run_simulation(data, initial_amount, ratios, strategy_type, param, enable_de
             st.write(f"  Rebalanced: {rebalanced}")
 
         if rebalanced:
-            # Rebalance asset holdings to target allocations based on current_portfolio_value
+            rebalance_count += 1
+            
+            # --- Fee Calculation ---
+            target_holdings = current_portfolio_value * ratios_arr
+            diff = asset_holdings - target_holdings
+            amount_to_sell = diff[diff > 0].sum()
+            fee_amount = amount_to_sell * (fee_percentage / 100.0)
+            total_fees += fee_amount
+            current_portfolio_value -= fee_amount # Deduct fee from portfolio
+            # --- End Fee Calculation ---
+
+            # Rebalance asset holdings to target allocations based on the new current_portfolio_value
             asset_holdings = pd.Series(current_portfolio_value * ratios_arr, index=data.columns)
             last_rebalance_date = current_date
+            
             # Recalculate current_portfolio_value after rebalancing for accurate recording
             current_portfolio_value = asset_holdings.sum()
+
             if enable_debugging:
+                st.write(f"  Amount to Sell for Rebalance: {amount_to_sell:.2f}")
+                st.write(f"  Fee Applied: {fee_amount:.2f}")
                 st.write(f"  Asset Holdings (after rebalance): {asset_holdings.to_dict()}")
                 st.write(f"  Current Portfolio Value (after rebalance): {current_portfolio_value:.2f}")
 
         # Record the total portfolio value for the day (after potential rebalancing)
         portfolio_values_history[current_date] = current_portfolio_value
 
-    return portfolio_values_history
+    return portfolio_values_history, rebalance_count, total_fees
 
 def run_individual_buy_and_hold(data, initial_amount, asset_ticker, enable_debugging=False):
     if enable_debugging:

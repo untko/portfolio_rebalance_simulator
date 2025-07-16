@@ -4,6 +4,17 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 
+def get_earliest_date(ticker_symbol):
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        # Fetch the full history
+        hist = ticker.history(period="max")
+        if not hist.empty:
+            return hist.index[0].date()
+    except Exception:
+        return None
+    return None
+
 def render_simulation_parameters():
     st.header("Simulation Parameters")
 
@@ -23,7 +34,8 @@ def render_simulation_parameters():
     assets_str = st.text_input("Assets (comma-separated tickers)", "BTC-USD,GLD")
     st.info("You can use any tickers available on Yahoo Finance (e.g., AAPL, GOOG, GLD, ETH-USD, ^GSPC). Find them at https://finance.yahoo.com/")
     assets = [s.strip().upper() for s in assets_str.split(',')]
-
+    
+    earliest_dates = {}
     # Display current prices of selected assets
     if assets:
         st.subheader("Current Asset Prices")
@@ -32,6 +44,7 @@ def render_simulation_parameters():
             with cols[i]:
                 current_price = "N/A"
                 asset_long_name = ""
+                earliest_date_str = "N/A"
                 try:
                     ticker = yf.Ticker(asset)
                     hist = ticker.history(period="1d")
@@ -44,12 +57,18 @@ def render_simulation_parameters():
                         asset_long_name = info['longName']
                     elif 'shortName' in info:
                         asset_long_name = info['shortName']
+                    
+                    # Get earliest date
+                    earliest_date = get_earliest_date(asset)
+                    if earliest_date:
+                        earliest_dates[asset] = earliest_date
+                        earliest_date_str = earliest_date.strftime('%d-%m-%Y')
 
                 except Exception:
                     pass # Ignore errors if price or info cannot be fetched
                 
                 display_name = f"{asset} - {asset_long_name}" if asset_long_name else asset
-                st.markdown(f"<h4 style='text-align: center; margin-bottom: 0px;'>{display_name}</h4><p style='text-align: center; font-size: 1.2em; margin-top: 0px;'>{current_price}</p>", unsafe_allow_html=True)
+                st.markdown(f"<h4 style='text-align: center; margin-bottom: 0px;'>{display_name}</h4><p style='text-align: center; font-size: 1.2em; margin-top: 0px;'>{current_price}</p><p style='text-align: center; font-size: 0.9em; margin-top: 0px;'>Since: {earliest_date_str}</p>", unsafe_allow_html=True)
 
     # Ratios
     st.subheader("Ratio")
@@ -91,6 +110,7 @@ def render_simulation_parameters():
     st.subheader("Range")
 
     predefined_ranges = {
+        "10 Years": 10,
         "5 Years": 5,
         "3 Years": 3,
         "1 Year": 1,
@@ -99,17 +119,33 @@ def render_simulation_parameters():
         "1 Month": 1/12,
     }
 
-    range_option = st.selectbox("Select Range (predefined or custom)", list(predefined_ranges.keys()) + ["Custom"])
+    # Get the index of '5 Years' to set it as default
+    range_keys = list(predefined_ranges.keys())
+    # Add "Automatic" to the beginning of the list
+    all_range_options = ["Automatic"] + range_keys + ["Custom"]
+    default_range_index = all_range_options.index("5 Years")
+
+    range_option = st.selectbox("Select Range (predefined or custom)", all_range_options, index=default_range_index)
 
     end_date = datetime.now().date()
 
-    if range_option != "Custom":
+    if range_option == "Automatic":
+        if earliest_dates:
+            # Find the latest of the earliest dates
+            start_date = max(earliest_dates.values())
+            st.write(f"Simulation will start from {start_date.strftime('%d-%m-%Y')} (based on the asset with the latest start date).")
+        else:
+            # Fallback if no earliest dates could be found
+            start_date = end_date - timedelta(days=365*5)
+            st.warning("Could not determine earliest date automatically. Defaulting to 5 years.")
+
+    elif range_option != "Custom":
         years_to_subtract = predefined_ranges[range_option]
         if years_to_subtract < 1:
             start_date = end_date - timedelta(days=int(365 * years_to_subtract))
         else:
             start_date = end_date - timedelta(days=int(365 * years_to_subtract))
-        st.write(f"Earliest available data: {start_date.strftime('%d-%m-%y')}")
+        st.write(f"Selected range: {range_option}. Start date: {start_date.strftime('%d-%m-%y')}")
     else:
         st.subheader("Custom Date Range")
         start_date = st.date_input("Start Date", value=end_date - timedelta(days=365))
@@ -147,7 +183,9 @@ def render_simulation_parameters():
     selected_threshold = []
     cols = st.columns(len(threshold_options))
     for i, (label, percentage) in enumerate(threshold_options.items()):
-        if cols[i].checkbox(label, value=True, key=f"threshold_{label}"):
+        # Set 50% threshold to be off by default
+        default_value = False if label == "50%" else True
+        if cols[i].checkbox(label, value=default_value, key=f"threshold_{label}"):
             selected_threshold.append(percentage)
 
     custom_threshold_enabled = st.checkbox("Custom (%)", value=False, key="enable_custom_threshold")

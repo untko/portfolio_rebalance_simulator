@@ -1,17 +1,21 @@
 # Portfolio Rebalancing Simulator
 
-This application simulates and visualizes the performance of different portfolio rebalancing strategies based on historical market data.
+This application simulates and visualizes the performance of different portfolio & assets (from yahoo finance) rebalancing strategies based on historical market data.
 
 ## Features
 
 - **Define Your Portfolio:**
   - Set the initial investment amount.
-  - Add multiple assets to the portfolio (e.g., BTC-USD, GLD, ETH-USD).
-  - Specify the desired asset allocation ratio using a slider or text input.
+  - Add multiple assets tickers to the portfolio (e.g., BTC-USD, GLD, ETH-USD).
 
-- **Select Simulation Range:**
+![assets](./images/choose_assets.png)
+
+- **Select Allocation & Simulation Range:**
+  - Specify the desired asset allocation ratio using a slider or text input.
   - Use predefined time ranges (e.g., 5 years, 3 years, 1 year, 6 months, 1 month).
   - Define a custom date range for the simulation.
+
+![ratio](./images/range_and_ratio.png)
 
 - **Choose Rebalancing Strategies:**
   - **Periodic Rebalancing:** Set a fixed time interval for rebalancing (daily, weekly, monthly, quarterly, yearly, or custom days). All periodic options are on by default.
@@ -19,11 +23,20 @@ This application simulates and visualizes the performance of different portfolio
 
 - **Individual Asset Buy and Hold:** Simulate buy and hold for individual assets alongside portfolio strategies.
 
+![strategy](./images/rebalancing_strategy.png)
+
 - **Visualize Results:**
   - Run the simulation to see how your portfolio would have performed.
   - Compare the performance of different rebalancing strategies on an interactive chart.
   - Graph lines for individual asset Buy and Hold strategies are styled differently for better visibility.
   - Final portfolio values table includes % Change, Volatility (%), and % Difference from Max.
+
+![visualize](./images/btc,nvda,gold_5year.png)
+
+- **final portfolio value**
+  - a table with final portfolio value, % change, volatility, rebalance count, total fee and % difference from max.
+
+![visualize](./images/final_portfolio_value.png) 
 
 - **Data Caching:** Historical data fetched from `yfinance` is cached locally for faster subsequent simulations.
 
@@ -47,14 +60,14 @@ This application simulates and visualizes the performance of different portfolio
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository-url>
-    cd rebalance_simulator_v2
+    git clone https://github.com/untko/portfolio_rebalance_simulator
+    cd portfolio_rebalance_simulator
     ```
 
 2.  **Create and activate a virtual environment:**
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    python -m venv venv # create new virtual environment in the current directory
+    source venv/bin/activate  # activate it, On Windows use `venv\Scripts\activate`
     ```
 
 3.  **Install the dependencies:**
@@ -69,4 +82,4 @@ This application simulates and visualizes the performance of different portfolio
     streamlit run app.py
     ```
 
-2.  Open your web browser and navigate to the URL provided by Streamlit (usually `http://localhost:8501`).
+2.  Open your web browser and navigate to the URL provided by Streamlit (usually `http://localhost:8502`).
